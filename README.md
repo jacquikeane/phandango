@@ -1,6 +1,6 @@
 ![logo](https://raw.githubusercontent.com/jameshadfield/phandangoExampleData/master/wikiImages/logo600.png)
 
-***
+*** 
 
 ##[Load the app](http://jameshadfield.github.io/phandango/)
 
