@@ -1,8 +1,8 @@
-![logo](https://raw.githubusercontent.com/jameshadfield/phandangoExampleData/master/wikiImages/logo600.png)
+![logo](https://raw.githubusercontent.com/sanger-pathogens/phandangoExampleData/master/wikiImages/logo600.png)
 
 *** 
 
-##[Load the app](http://jameshadfield.github.io/phandango/)
+##[Load the app](https://sanger-pathogens.github.io/phandango/)
 
 ##[Wiki Page](http://github.com/jameshadfield/phandango/wiki)
 
