@@ -4,7 +4,7 @@
 
 ##[Load the app](https://sanger-pathogens.github.io/phandango/)
 
-##[Wiki Page](http://github.com/jameshadfield/phandango/wiki)
+##[Wiki Page](http://github.com/sanger-pathogens/phandango/wiki)
 
 ***
 
@@ -24,7 +24,7 @@ As phandango is a web app you only need to install it if you wish to contribute 
 #### Installing
 
 * [Prerequisite] You must have Node and Node Package Manager (npm) which will then install the required javascript libraries. On OS X [I find nvm](http://stackoverflow.com/a/28025834) to be the best way.
-* Clone or fork this github repo: `git clone git@github.com:jameshadfield/phandango.git`
+* Clone or fork this github repo: `git clone git@github.com:sanger-pathogens/phandango.git`
 * Run `npm install` inside the phandango directory
 * [optional] Run the tests with `npm run test`
 * `npm run start` bundles the javascript and serves it to `localhost:8080` with dev-tools enabled and will automagically update the bundle when you edit a file.

@@ -32,7 +32,7 @@ export const UnsupportedBrowser = ({ msg }) => {
 
           <strong>Why is this?</strong> Different browsers use different syntax to handle events (such as zooming, dragging) as well as niggly things like scroll bars, animations e.t.c. Unfortunately there is lots of code which relies on these things in an interactive app such as this and it's hard to support every browser out there!
           <p>
-            <strong>Can you help?</strong> Phandango is open source and <a href="https://github.com/jameshadfield/phandango">is on GitHub</a>. If you can help out and increase browser support that would be great.
+            <strong>Can you help?</strong> Phandango is open source and <a href="https://github.com/sanger-pathogens/phandango">is on GitHub</a>. If you can help out and increase browser support that would be great.
           </p>
           <p><a href="mailto:jh22@sanger.ac.uk">Contact (email)</a></p>
           <p>version {version}</p>
