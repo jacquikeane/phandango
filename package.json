@@ -11,7 +11,7 @@
   "main": "js/bundle.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jameshadfield/phandango"
+    "url": "https://github.com/sanger-pathogens/phandango"
   },
   "bugs": {
     "url": "https://github.com/jameshadfield/phandango/issues"
