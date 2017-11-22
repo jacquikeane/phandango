@@ -5,17 +5,12 @@ export function increaseSpinner(value = 1) {
   return ({ type: 'increaseSpinner', value });
 }
 
-export function decreaseSpinner() {
-  return ({ type: 'decreaseSpinner' });
+export function toggleSettings() {
+  return ({ type: 'toggleSettings' });
 }
 
-export function goToPage(name) {
-  return function (dispatch) {
-    dispatch({ type: 'newPage', name: name });
-    if (name === 'settings') {
-      dispatch(notificationNew('press \'s\' or \'m\' to exit settings!'));
-    }
-  };
+export function decreaseSpinner() {
+  return ({ type: 'decreaseSpinner' });
 }
 
 export function layoutPercentChange(col, idx, perc) {
@@ -112,4 +107,3 @@ export function showBlocks(name) {
     dispatch(decreaseSpinner());
   };
 }
-
