@@ -69,7 +69,7 @@ const analyseIncomingData = (fileName, fileContents) => {
     if (fileContents.startsWith('#NEXUS')) {
       throw new Error('Tree\'s can\'t be NEXUS format!');
     } else if (!fileContents.startsWith('(')) {
-      throw new Error('Tree is not in Newick format (must start with a \')\')!');
+      throw new Error('Tree is not in Newick format (must start with a \'(\')!');
     }
     fileType = 'tree';
     /*
@@ -204,7 +204,9 @@ export function incomingFile(file, ajax = false) {
       return parser(success); // usually a promise
     }).then( (success) =>
       goDispatch(dispatch, getState, success, dataType, filename) // returns undefined | throws
-    ).catch( (failure) => {
+    ).then( () => {
+      dispatch({ type: 'decreaseSpinner' });
+    }).catch( (failure) => {
       console.error(failure.stack);
       dispatch( notificationNew(
         'Input error. File: ' + filename,

@@ -1,63 +1,70 @@
-import "babel-polyfill";
+import 'babel-polyfill';
 import '../../css/JScandy.css';
 import '../../node_modules/flexboxgrid/css/flexboxgrid.min.css';
 import React from 'react';
 import { render } from 'react-dom';
+import { HashRouter, Route, Switch } from 'react-router-dom';
+import { withRouter } from 'react-router';
 import configureStore from '../store/configureStore';
 import DevTools from '../containers/devTools';
-import { Provider, connect } from 'react-redux';
-import { MainReactElement } from './main';
+import { Provider } from 'react-redux';
 import injectTapEventPlugin from 'react-tap-event-plugin';
-import { UnsupportedBrowser } from '../components/UnsupportedBrowser';
-import { getBrowser } from '../misc/helperFunctions';
-// Needed for onTouchTap -- Can go away when react 1.0 release
-// https://github.com/zilverline/react-tap-event-plugin
-injectTapEventPlugin();
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+import { NotificationDisplay } from '../components/notification';
+import Spinner from '../components/spinner';
+import Monitor from './monitor';
+import { Main } from './main';
+import { LandingPage } from './landingPage';
+import { ExamplesPage } from './examplesPage';
+import Header from '../components/header';
+import ProjectGPS from '../components/projects/gps';
+
+const store = configureStore();
+const HeaderWithRouter = withRouter(Header);
+const MonitorWithRouter = withRouter(Monitor);
 
 if (process.env.NODE_ENV !== 'production') {
   window.React = React; // for react chrome extension debugger
 }
 
-const browser = getBrowser();
-console.log(browser);
-let elements;
-
-if (browser.mobile) {
-  window.ga('send', 'pageview', '/unsupportedBrowser');
-  elements = <UnsupportedBrowser msg="mobile devices are not yet supported"/>;
-} else if (browser.name === 'Firefox' && browser.version < 45) {
-  window.ga('send', 'pageview', '/unsupportedBrowser');
-  const msg = 'Firefox is only supported for versions 45 and above (you have version ' + browser.version.toString() + ')';
-  elements = <UnsupportedBrowser msg={msg}/>;
-} else {
-  const store = configureStore();
-  const ConnectedMainReactElement = connect((state)=>({
-    page: state.router,
-    spinner: state.spinner,
-  }))(MainReactElement);
-
-  let browserMessage = null;
-  if ([ 'Chrome', 'Safari', 'Firefox' ].indexOf((browser.name)) === -1) {
-    browserMessage = browser.name + ' version ' + browser.version.toString();
-  }
-  elements = [
-    <Provider store={store} key={'providerKey'}>
-      <ConnectedMainReactElement browserMessage={browserMessage}/>
-    </Provider>,
-  ];
-  if (process.env.NODE_ENV !== 'production') {
-    elements.push(
-      <DevTools key={'devToolsKey'} store={store}/>
-    );
-  }
-}
-
-// if (navigator.userAgent.match(/WebKit/i)) {
-//   window.ga('send', 'pageview', '/unsupportedBrowser');
-//   elements = <UnsupportedBrowser msg="mobile devices are not yet supported"/>;
-// }
-
 render(
-  <div>{elements}</div>,
+  <div>
+    {process.env.NODE_ENV === 'production' ? null :
+      <DevTools key={'devToolsKey'} store={store}/>
+    }
+    <Provider store={store} key={'providerKey'}>
+      <HashRouter>
+        <MuiThemeProvider>
+          <div>
+            <MonitorWithRouter/>
+            <HeaderWithRouter/>
+            <Spinner/>
+            <Switch>
+              <Route exact path="/" component={LandingPage}/>
+              <Route path="/examples" component={ExamplesPage}/>
+              <Route path="/main" component={Main}/>
+              <Route path="/gps" component={ProjectGPS}/>
+              <Route path="/*" component={LandingPage}/>
+            </Switch>
+            <NotificationDisplay />
+          </div>
+        </MuiThemeProvider>
+      </HashRouter>
+    </Provider>
+  </div>,
   document.getElementById('react')
 );
+
+
+/*  to fix iOS's dreaded 300ms tap delay, we need this plugin
+NOTE Facebook is not planning on supporting tap events (#436) because browsers are fixing/removing
+the click delay. Unfortunately it will take a lot of time before all mobile
+browsers (including iOS' UIWebView) will and can be updated.
+https://github.com/zilverline/react-tap-event-plugin
+Following https://github.com/zilverline/react-tap-event-plugin/issues/61
+we wrap this in a try-catch as hotloading triggers errors */
+try {
+  injectTapEventPlugin();
+} catch (e) {
+  // empty
+}

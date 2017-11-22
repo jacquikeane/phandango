@@ -1,243 +1,194 @@
-import { incomingFile } from '../actions/fileInput';
-import { connect } from 'react-redux';
 import React from 'react';
-import { NotificationDisplay } from '../components/notification';
-
-// Pages to display
-import { CanvasContainer } from './canvases';
+import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
+import { Annotation } from '../components/annotation';
+import { Drag } from '../components/resize';
+import { Phylogeny } from '../components/phylogeny';
+import { Blocks } from '../components/blocks';
+import { Metadata } from '../components/metadata';
+import { MetadataKey } from '../components/metadataKey';
+import { Line } from '../components/lineGraph';
+import { Gwas } from '../components/gwasGraph';
+import { Cartoon } from '../components/cartoonGenome';
+import { StaticLogo } from '../components/logo';
 import { Settings } from './settings';
-import { LandingPage } from './landingPage';
-import { ExamplesPage } from './examplesPage';
 
-// misc
-import { Header } from '../components/header';
-import { Spinner } from '../components/spinner';
-
-// Actions to be dispatched upon key presses
-import { notificationNew, notificationSeen } from '../actions/notifications';
-import { goToPage, toggleMetaKey, showBlocks, increaseSpinner } from '../actions/general';
-
-import C2S from '../misc/canvas2svg';
-
-/* efforts to get fonts working... i think (SH16)
-// function base64ToArrayBuffer(base64) {
-//   const binaryString =  window.atob(base64);
-//   const len = binaryString.length;
-//   const bytes = new Uint8Array( len );
-//   for (let i = 0; i < len; i++) {
-//     bytes[i] = binaryString.charCodeAt(i);
-//   }
-//   return bytes.buffer;
-// }
-
-// function registerFonts() {
-//   window.pdfdoc.registerFont('Lato-Light', base64ToArrayBuffer(require("base64!../../font/lato/Lato-Light.ttf")));
-// }
-
-
-// import pdfkit from 'pdfkit';
-// import pdfkit from 'transform?brfs!pdfkit';
-
-// let window.pdfdoc;
-
-// const xhr = new XMLHttpRequest();
-// xhr.open("GET", "/font/lato/Lato-Light.ttf", true);
-// xhr.responseType = "arraybuffer";
-// let latoFont;
-// xhr.onload = function(oEvent) {
-//     latoFont = xhr.response; // Note: not xhr.responseText
-// };
-
-// xhr.send(null);
-
-*/
-
-/*
-Connect the containers which will be displayed here to redux store / dispatch etc
-Note that the MainReactElement doesn't itself access store/state as it itself
-displays nothing apart from child containers (which need display information)
-*/
-// the main display!
-const ConnectedCanvasContainer = connect((state)=>({
+@connect((state)=>({
   active: state.layout.active,
   colPercs: state.layout.colPercs,
   rowPercs: state.layout.rowPercs,
   logoIsOn: state.layout.logoIsOn,
-}))(CanvasContainer);
-const ConnectedSettings = connect()(Settings);
-const ConnectedLandingPage = connect(
-  () =>({}),
-  (dispatch) => ({
-    goToPage: (name) => {dispatch(goToPage(name));},
-  })
-)(LandingPage);
-/* notifications is always displayed and it pops up when needed */
-const ConnectedNotifications = connect(
-  (state)=>({
-    title: state.notifications.active.title,
-    message: state.notifications.active.message,
-    dialog: state.notifications.active.dialog,
-    open: state.notifications.active.open,
-    counter: state.notifications.counter,
-  }),
-  (dispatch)=>({
-    notificationSeen: () => {dispatch(notificationSeen());},
-  })
-)(NotificationDisplay);
+}))
+export class Main extends React.Component {
+  static propTypes = {
+    active: PropTypes.object.isRequired,
+    colPercs: PropTypes.arrayOf(PropTypes.number).isRequired,
+    rowPercs: PropTypes.array.isRequired,
+    logoIsOn: PropTypes.bool.isRequired,
+  };
+  constructor(...args) {
+    super(...args);
+    this.displayName = 'CanvasContainer';
+    this.keyIdx = 0;
+    this.key = 'canvases0';
+    this.resizeFn = () => {
+      this.forceUpdate(); // is this enough?
+    };
+    this.percentize = (n) => {
+      return (n.toString() + '%');
+    };
+    this.makeVh = (n) => {
+      return (n.toString() + 'vh');
+    };
+    this.getStyle = (colIdx, rowIdx) => {
+      const sty = {
+        width: this.percentize(this.props.colPercs[colIdx]),
+        height: 'calc(' + this.makeVh(this.props.rowPercs[rowIdx]) + ' - 3px)',
+        position: 'relative',
+        margin: '0px',
+      };
+      if (colIdx < 2) {
+        sty.float = 'left';
+      } else {
+        sty.float = 'right';
+      }
+      if (colIdx === 0 && rowIdx === 2) {
+        sty.position = 'absolute';
+        sty.bottom = '30px';
+        sty.left = '10px';
+      }
+      return (sty);
+    };
+  }
+  // componentDidMount() {
+  //   window.addEventListener('resize', this.resizeFn, false);
+  //   document.documentElement.style.overflow = 'hidden';  // firefox, chrome
+  //   document.body.scroll = "no"; // ie only
+  // }
 
-const ConnectedExamples = connect()(ExamplesPage); // dispatch is used
-const ConnectedHeader = connect(
-  (state)=>({
-    pageName: state.router,
-    treeActive: state.layout.active.tree,
-    annotationActive: state.layout.active.annotation,
-  }),
-  (dispatch) => ({
-    goToPage: (name) => {dispatch(goToPage(name));},
-  })
-)(Header);
-
-/* PDF event
-https://developer.mozilla.org/en-US/docs/Web/Guide/Events/Creating_and_triggering_events
-This is a one-off thing and so it uses events rather than the flux approach
-*/
-const pdfEvent = new Event('pdf');
-
-/*
-The purposes of the MainReactElement:
-* add global listeners
-* read the current page (@props) and choose display containers accordingly
-*/
-export const MainReactElement = React.createClass({ displayName: 'Main_React_Element',
-  propTypes: {
-    page: React.PropTypes.string.isRequired,
-    dispatch: React.PropTypes.func.isRequired,
-    spinner: React.PropTypes.number,
-    browserMessage: React.PropTypes.string,
-  },
-  componentDidMount: function () {
-    document.addEventListener('dragover', (e) => {e.preventDefault();}, false);
-    document.addEventListener('drop', this.filesDropped, false);
-    document.addEventListener('keyup', this.keyIncoming);
-  },
-  render: function () {
-    let injectedPage;
-    switch (this.props.page) {
-    case 'landing':
-      window.ga('send', 'pageview', '/landing');
-      injectedPage = <ConnectedLandingPage browserMessage={this.props.browserMessage}/>;
-      break;
-    case 'settings':
-      window.ga('send', 'pageview', '/settings');
-      injectedPage = [
-        <ConnectedSettings key="settings"/>,
-        <ConnectedCanvasContainer key="canvases"/>,
-      ];
-      break;
-    case 'examples':
-      window.ga('send', 'pageview', '/examples');
-      injectedPage = <ConnectedExamples />;
-      break;
-    case 'main':
-      injectedPage = <ConnectedCanvasContainer />;
-      break;
-    default:
-      injectedPage = false;
+  // componentWillUpdate() {
+  //   /* changing the key apparently causes
+  //    * all the children to re-render
+  //    * thus avoiding any canvas stretching when things update
+  //    * https://github.com/facebook/react/issues/3038
+  //    */
+  //   this.keyIdx += 1;
+  //   this.key = 'canvases' + this.keyIdx;
+  // }
+  componentDidUpdate() {
+    // console.log('canvases.jsx did update');
+    window.dispatchEvent(new Event('resize')); // same event as window resizing :)
+  }
+  // componentWillUnmount() {
+  //   window.removeEventListener('resize', this.resizeFn, false);
+  // }
+  render() {
+    const active = this.props.active;
+    // deebug this
+    if (!Object.keys(active).some((e)=>active[e])) {
+      return false;
     }
+    // top row (small genome / ??? / annotation)
+    const topRow = [];
+    if (active.blocks || active.annotation) {
+      topRow[0] = <Cartoon style={this.getStyle(0, 0)} key={'cartoon'} />;
+    } else {
+      topRow[0] = <div style={this.getStyle(0, 0)} key={'cartoon'} />;
+    }
+    topRow[1] = <div style={this.getStyle(1, 0)} key={'aboveMeta'} />;
+    if (active.annotation) {
+      topRow[2] = <Annotation style={this.getStyle(2, 0)} key={'annotation'} />;
+    } else {
+      topRow[2] = <div style={this.getStyle(2, 0)} key={'annotation'} />;
+    }
+    const middleRow = [];
+    // tree
+    if (active.tree) {
+      middleRow[0] = <Phylogeny style={this.getStyle(0, 1)} key={'tree'} />;
+    } else {
+      middleRow[0] = <div style={this.getStyle(0, 1)} key={'tree'} />;
+    }
+    // metadata
+    if (active.meta) {
+      middleRow[1] = <Metadata style={this.getStyle(1, 1)} key={'meta'} />;
+    } else {
+      middleRow[1] = <div style={this.getStyle(1, 1)} key={'meta'} />;
+    }
+    // blocks / metadata key
+    if (active.metaKey) {
+      middleRow[2] = <MetadataKey style={this.getStyle(2, 1)} key={'metaKey'} />;
+    } else if (active.blocks) {
+      middleRow[2] = <Blocks style={this.getStyle(2, 1)} key={'blocks'} />;
+    } else {
+      middleRow[2] = <div style={this.getStyle(2, 1)} key={'blocks'} />;
+    }
+
+    // needs improvement
+    const plots = [];
+    if ('gwas' in active.plots ) {
+      plots[0] = <Gwas style={this.getStyle(2, 2)} key={'gwas'} />;
+    } else if ('line' in active.plots ) {
+      plots[0] = <Line style={this.getStyle(2, 2)} key={'line'} />;
+    }
+
+    // logo on / off
+    let logo = null;
+    if (this.props.logoIsOn) {
+      logo = (
+        <div id="staticLogo" style={{
+          position: 'absolute',
+          bottom: '5px',
+          width: '200px',
+          left: '5px',
+          height: '100px',
+        }}>
+          <StaticLogo />
+        </div>
+      );
+    }
+
+    /* resizing divs */
+    const vresizers = [];
+    let numResizers = 2; // default
+    if (!this.props.active.tree) {
+      numResizers -= 1;
+    }
+    for (let i = 0; i < numResizers; i++) {
+      vresizers[i] = (
+        <Drag index={i} isCol={false} key={'row' + i.toString() + 'drag'}/>
+      );
+    }
+    const hresizers = [];
+    numResizers = 2; // default
+    if (!this.props.active.meta) {
+      numResizers -= 1;
+    }
+    if (!this.props.active.blocks && !this.props.active.annotation && !this.props.active.metaKey) {
+      numResizers -= 1;
+    }
+    for (let i = 0; i < numResizers; i++) {
+      hresizers[i] = (
+        <Drag index={i} isCol={true} key={'col' + i.toString() + 'drag'}/>
+      );
+    }
+
     return (
-      <div id="mainDiv" ref={(c) => this.node = c}>
-        <ConnectedHeader />
-        <Spinner key="spinner" active={this.props.spinner} />
-        {injectedPage}
-        <ConnectedNotifications />
+      <div>
+        <Settings/>
+        <div id="canvassesDiv" ref={(c) => this.node = c} key={this.key}>
+          <div className="newline" />
+          {topRow}
+          <div className="newline" />
+          {middleRow}
+          <div className="newline" />
+          {plots}
+
+          {logo}
+
+          {vresizers}
+          {hresizers}
+        </div>
       </div>
     );
-  },
-
-  keyIncoming: function (event) {
-    // http://www.cambiaresearch.com/articles/15/javascript-char-codes-key-codes
-    const key = event.keyCode || event.charCode;
-    switch (key) {
-    case 83: // s
-      const p = this.props.page === 'settings' ? 'main' : 'settings';
-      this.props.dispatch(goToPage(p));
-      break;
-    case 77: // m
-      this.props.dispatch(goToPage('main'));
-      break;
-    case 76: // l
-      this.props.dispatch(goToPage('landing'));
-      break;
-    case 69: // e
-      this.props.dispatch(goToPage('examples'));
-      break;
-    case 90: // z
-      this.props.dispatch(showBlocks('gubbins'));
-      break;
-    case 88: // x
-      this.props.dispatch(showBlocks('gubbinsPerTaxa'));
-      break;
-    case 67: // c
-      this.props.dispatch(showBlocks('bratNextGen'));
-      break;
-    case 86: // v
-      this.props.dispatch(showBlocks('merged'));
-      break;
-    case 75: // k
-      this.props.dispatch(toggleMetaKey());
-      break;
-    // pdf / svg triggered via 'p'
-    case 80: // p
-      this.produceSVG();
-      break;
-    // for testing only:
-    // case 27: // esc
-    //   this.props.dispatch({ type: 'clearAllData' });
-    //   break;
-    default:
-      return;
-    }
-  },
-
-  produceSVG() {
-    window.svgCtx = new C2S(window.innerWidth, window.innerHeight);
-    window.dispatchEvent(pdfEvent);
-
-    const mySVG = window.svgCtx.getSerializedSvg(true);
-    let myURL = undefined;
-    const a = document.createElement('a');
-    if (a.download !== undefined) {
-      const blob = new Blob([ mySVG ], { type: 'text/plain;charset=utf-8' });
-      myURL = window.URL.createObjectURL(blob);
-      a.setAttribute('href', myURL);
-      a.download = 'Phandango.svg';
-    } else {
-      const svgData = 'data:application/svg;charset=utf-8,' + encodeURIComponent(mySVG);
-      a.setAttribute('href', svgData);
-    }
-
-    // a.setAttribute('target', '_blank');
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () {
-      if (myURL) {
-        window.URL.revokeObjectURL(myURL);
-      }
-      document.body.removeChild(a);
-    }, 100);
-  },
-
-  filesDropped(e) {
-    window.ga('send', 'pageview', '/filesDropped');
-    // this.props.dispatch(goToPage('loading'));
-    // this.props.dispatch(notificationNew(showHelp());
-    this.props.dispatch(notificationNew('press \'h\' for help!'));
-    const files = e.dataTransfer.files;
-    e.preventDefault();
-    this.props.dispatch(increaseSpinner(files.length));
-    for (let i = 0; i < files.length; i++) {
-      this.props.dispatch(incomingFile(files[i]));
-    }
-  },
-});
-
+  }
+}

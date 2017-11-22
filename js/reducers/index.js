@@ -7,14 +7,12 @@ import { gwasGraph } from './gwasGraph';
 import { notifications } from './notifications';
 import { metadata } from './metadata';
 import { blocks } from './blocks';
-import { router } from './router';
 
 const initialPhylogenyState = {
   newickString: undefined,
   activeTaxa: {},
   fileName: 'not loaded',
 };
-
 
 const rootReducer = combineReducers({
   annotation,
@@ -23,8 +21,8 @@ const rootReducer = combineReducers({
   lineGraph,
   gwasGraph,
   genomeInfo,
+  misc,
   phylogeny,
-  router,
   layout,
   notifications,
   spinner,
@@ -32,7 +30,7 @@ const rootReducer = combineReducers({
 
 export default rootReducer;
 
-function annotation(state = { data: [], fileName: '' }, action) {
+function annotation(state = { data: [], fileName: 'not loaded' }, action) {
   switch (action.type) {
   case 'annotationData':
     return { data: action.data, fileName: action.fileName };
@@ -70,6 +68,15 @@ function phylogeny(state = initialPhylogenyState, action) {
   }
 }
 
+function misc(state = { showSettings: false }, action) {
+  switch (action.type) {
+  case 'toggleSettings':
+    return merge({}, state, { showSettings: !state.showSettings });
+  default:
+    return state;
+  }
+}
+
 /* the spinner reducer is simply an integer of how many things are "to load"
  * so it reduces by one each time a data type comes in!
  */
@@ -78,16 +85,11 @@ function spinner(state = 0, action) {
   case 'increaseSpinner':
     // console.log('spinner value set to ', action.value);
     return action.value;
-  case 'gubbinsData': // fallthrough
-  case 'bratNextGenData': // fallthrough
-  case 'roaryData': // fallthrough
-  case 'treeData': // fallthrough
-  case 'annotationData': // fallthrough
-  case 'gwasData': // fallthrough
-  case 'metaData': // fallthrough
   case 'decreaseSpinner':
     // console.log('spinner value decreasing via ', action.type);
     return state ? state - 1 : state;
+  case 'notificationNew':
+    return action.type.startsWith('Input error') ? state - 1 : state;
   default:
     return state;
   }
